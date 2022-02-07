@@ -143,12 +143,12 @@ for val in  ${HUC[@]}; do
 	fi
 
 	if test -f ${Outdir}${file_name}hf.tif; then
-		echo "catchments_wgs84.geojson exists"
+		echo "${Outdir}${file_name}hf.tif exists"
 	else
 	 	echo "rasterize flow line"
 		
 		gdal_translate -scale 0 40000000000000 0 0 ${Outdir}${file_name}fel.tif ${Outdir}${file_name}hf.tif	
-		gdal_rasterize -b 1 -burn 1  ${Dir}${hydrofabrics_directory}flowpaths_wgs84.json ${Outdir}${file_name}hf.tif			
+		gdal_rasterize -b 1 -burn 1  ${Dir}${hydrofabrics_directory}/spatial/flowpath_data.geojson ${Outdir}${file_name}hf.tif			
 	fi
 		
 	if [[ $Variable == *"TWI"* ]]; then
@@ -168,22 +168,12 @@ for val in  ${HUC[@]}; do
 		if test -f ${Outdir}${file_name}twi_cr.tif; then
 			echo "${Outdir}${file_name}twi_cr.tif exists"
 		else
+		# TODO: This should crop to the watershed boundary with a buffer
+
 			gdalwarp -cutline --config GDALWARP_IGNORE_BAD_CUTLINE YES ${Dir}${out_dir_taudem}/${hucid}/${hucid}-wbd.shp -dstalpha ${Outdir}${file_name}twi.tif -dstnodata "-999.0" ${Outdir}${file_name}twi_cr.tif
 			gdalwarp -cutline --config GDALWARP_IGNORE_BAD_CUTLINE YES ${Dir}${out_dir_taudem}/${hucid}/${hucid}-wbd.shp -dstalpha ${Outdir}${file_name}slp.tif -dstnodata "-999.0" ${Outdir}${file_name}slp_cr.tif
 		fi
-
-		if test -f  ${Dir}${hydrofabrics_directory}flowpaths_wgs84.json; then
-			echo "catchments_wgs84.json exists"
-		else
-		 	echo "Reproject hydrofabrics file catchments_wgs84.json"
-
-			ogr2ogr -f "GeoJSON" ${Dir}${hydrofabrics_directory}catchments_wgs84.json ${Dir}${hydrofabrics_directory}catchments.geojson  -s_srs EPSG:5070 -t_srs EPSG:4326
-			ogr2ogr -f "GeoJSON" ${Dir}${hydrofabrics_directory}flowpaths_wgs84.json ${Dir}${hydrofabrics_directory}flowpaths.geojson -s_srs EPSG:5070 -t_srs EPSG:4326
-			
-		fi
 		
-
-
 	fi
 	
 
@@ -245,9 +235,9 @@ for val in  ${HUC[@]}; do
 		fi
 	
 		
-		#generate GIUH per basin
-		
-		python generate_giuh_per_basin_params.py ${hucid} ${Dir}${hydrofabrics_directory}catchments_wgs84.json ${Dir}${out_dir_taudem}/${hucid}/${file_name}dsave${method}_cr.tif ${Dir}$soil_param_file ${Dir}$GW_param_file ${Dir}$out_dir_giuh --output 1 --buffer 0.001 --nodata -999
+		#generate GIUH per basin			
+		echo python generate_giuh_per_basin_params.py ${hucid} ${Dir}${hydrofabrics_directory}/spatial/catchment_data.geojson ${Dir}${out_dir_taudem}/${hucid}/${file_name}dsave${method}_cr.tif ${Dir}${hydrofabrics_directory}/parameters/nwm.csv ${Dir}$out_dir_giuh --output 1 --buffer 0.001 --nodata -999
+		python generate_giuh_per_basin_params.py ${hucid} ${Dir}${hydrofabrics_directory}/spatial/catchment_data.geojson ${Dir}${out_dir_taudem}/${hucid}/${file_name}dsave${method}_cr.tif ${Dir}${hydrofabrics_directory}/parameters/nwm.csv ${Dir}$out_dir_giuh --output 1 --buffer 0.001 --nodata -999
 	fi
 
 	if [[ $Variable == *"TWI"* ]]; then
@@ -266,9 +256,8 @@ for val in  ${HUC[@]}; do
 		echo "Generating histogram"						
 		#conda activate $python_env
 		#generate TWI per basin - need to modify to also generate width function
-		
-
-		python generate_twi_per_basin.py ${hucid} ${Dir}${hydrofabrics_directory}catchments_wgs84.json ${Outdir}${file_name}twi_cr.tif ${Outdir}${file_name}slp_cr.tif ${Outdir}${file_name}dsave_noweight.tif ${Dir}$soil_param_file ${Dir}$out_dir_twi --output 1 --buffer 0.001 --nodata -999
+		echo python generate_twi_per_basin.py ${hucid} ${Dir}${hydrofabrics_directory}/spatial/catchment_data.geojson ${Outdir}${file_name}twi_cr.tif ${Outdir}${file_name}slp_cr.tif ${Outdir}${file_name}dsave_noweight.tif ${Dir}${hydrofabrics_directory}/parameters/nwm.csv ${Dir}$out_dir_twi --output 1 --buffer 0.001 --nodata -999
+		python generate_twi_per_basin.py ${hucid} ${Dir}${hydrofabrics_directory}/spatial/catchment_data.geojson ${Outdir}${file_name}twi_cr.tif ${Outdir}${file_name}slp_cr.tif ${Outdir}${file_name}dsave_noweight.tif ${Dir}${hydrofabrics_directory}/parameters/nwm.csv ${Dir}$out_dir_twi --output 1 --buffer 0.001 --nodata -999
 		
 	fi	
 

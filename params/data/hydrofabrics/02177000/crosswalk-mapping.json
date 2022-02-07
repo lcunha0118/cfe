@@ -1,0 +1,334 @@
+{
+  "cat-1": {
+    "member_comids": [6269328, 6269336, 6269318, 6269320, 6268174, 6268156, 6269342.1, 6269342.2],
+    "gages": ["02177000,02177000"],
+    "outlet_comid": [6269328],
+    "main": [1]
+  },
+  "cat-4": {
+    "member_comids": [6268060, 6269274, 6267976, 6267964, 6269188],
+    "outlet_comid": [6268060],
+    "main": [1]
+  },
+  "cat-6": {
+    "member_comids": [6267906, 6269186],
+    "outlet_comid": [6267906],
+    "main": [1]
+  },
+  "cat-7": {
+    "member_comids": [6269180],
+    "outlet_comid": [6269180],
+    "main": [1]
+  },
+  "cat-9": {
+    "member_comids": [6267746, 6269168],
+    "outlet_comid": [6267746],
+    "main": [1]
+  },
+  "cat-11": {
+    "member_comids": [6267722, 6269164, 6269162],
+    "outlet_comid": [6267722],
+    "main": [1]
+  },
+  "cat-29": {
+    "member_comids": [6267748, 6267720, 6267708, 6267688, 6267672, 6267660, 6267646],
+    "outlet_comid": [6267748],
+    "main": [15]
+  },
+  "cat-14": {
+    "member_comids": [6269154, 6269146, 6269140],
+    "outlet_comid": [6269154],
+    "main": [1]
+  },
+  "cat-20": {
+    "member_comids": [6267522, 6269130, 6267464, 6265896, 6265880, 6265846, 6265844, 6265832, 6265804, 6265794],
+    "outlet_comid": [6267522],
+    "main": [1]
+  },
+  "cat-39": {
+    "member_comids": [6267900, 6267824, 6267810, 6269176, 6267804],
+    "outlet_comid": [6267900],
+    "main": [25]
+  },
+  "cat-35": {
+    "member_comids": [6267638, 6267620, 6267578, 6267576, 6267506, 6267482, 6267462, 6265884],
+    "outlet_comid": [6267638],
+    "main": [15]
+  },
+  "cat-54": {
+    "member_comids": [6267574, 6267544, 6267542],
+    "outlet_comid": [6267574],
+    "main": [31]
+  },
+  "cat-156": {
+    "member_comids": [6267586, 6267572, 6269142, 6267554, 6267540, 6267546, 6267548],
+    "outlet_comid": [6267586],
+    "main": [33]
+  },
+  "cat-80": {
+    "member_comids": [6267996, 6268046, 6268050, 6268054, 6268052, 6268044, 6267970],
+    "outlet_comid": [6267996],
+    "main": [39]
+  },
+  "cat-42": {
+    "member_comids": [6267832, 6267858, 6267886],
+    "outlet_comid": [6267832],
+    "main": [25]
+  },
+  "cat-63": {
+    "member_comids": [6267504, 6267466, 6265890, 6265866, 6265830, 6265802],
+    "outlet_comid": [6267504],
+    "main": [38]
+  },
+  "cat-59": {
+    "member_comids": [6267484, 6265894, 6265878, 6265856, 6265820],
+    "outlet_comid": [6267484],
+    "main": [31]
+  },
+  "cat-23": {
+    "member_comids": [6265792, 6265786],
+    "outlet_comid": [6265792],
+    "main": [1]
+  },
+  "cat-97": {
+    "member_comids": [6269134, 6269136, 6265900],
+    "outlet_comid": [6269134],
+    "main": [60]
+  },
+  "cat-44": {
+    "member_comids": [6267862, 6267854, 6267870, 6267872],
+    "outlet_comid": [6267862],
+    "main": [25]
+  },
+  "cat-90": {
+    "member_comids": [6267714, 6267718, 6269282, 6267764],
+    "outlet_comid": [6267714],
+    "main": [61]
+  },
+  "cat-121": {
+    "member_comids": [6267712],
+    "outlet_comid": [6267712],
+    "main": [58]
+  },
+  "cat-169": {
+    "member_comids": [6267622, 6267630, 6267632, 6269148],
+    "outlet_comid": [6267622],
+    "main": [53]
+  },
+  "cat-135": {
+    "member_comids": [6267550, 6269278, 6269280, 6267562],
+    "outlet_comid": [6267550],
+    "main": [57]
+  },
+  "cat-146": {
+    "member_comids": [6265868, 6265948, 6265834, 6265826],
+    "outlet_comid": [6265868],
+    "main": [56]
+  },
+  "cat-113": {
+    "member_comids": [6265796, 6265784, 6265946, 6265782],
+    "outlet_comid": [6265796],
+    "main": [59]
+  },
+  "cat-68": {
+    "member_comids": [6269330, 6268170, 6268116],
+    "outlet_comid": [6269330],
+    "main": [79]
+  },
+  "cat-183": {
+    "member_comids": [6269172, 6269170, 6267628],
+    "outlet_comid": [6269172],
+    "main": [65]
+  },
+  "cat-73": {
+    "member_comids": [6268164, 6269200, 6268182],
+    "outlet_comid": [6268164],
+    "main": [77]
+  },
+  "cat-47": {
+    "member_comids": [6268062, 6268002, 6267978],
+    "outlet_comid": [6268062],
+    "main": [82]
+  },
+  "cat-180": {
+    "member_comids": [6267808, 6267744, 6269152],
+    "outlet_comid": [6267808],
+    "main": [66]
+  },
+  "cat-51": {
+    "member_comids": [6267802, 6267750, 6267654],
+    "outlet_comid": [6267802],
+    "main": [64]
+  },
+  "cat-92": {
+    "member_comids": [6267716, 6267694, 6267690],
+    "outlet_comid": [6267716],
+    "main": [76]
+  },
+  "cat-124": {
+    "member_comids": [6267612, 6267584, 6267488],
+    "outlet_comid": [6267612],
+    "main": [58]
+  },
+  "cat-163": {
+    "member_comids": [6267564, 6267566, 6267570],
+    "outlet_comid": [6267564],
+    "main": [67]
+  },
+  "cat-142": {
+    "member_comids": [6267532, 6267516, 6265892],
+    "outlet_comid": [6267532],
+    "main": [69]
+  },
+  "cat-161": {
+    "member_comids": [6267526, 6267514, 6267520],
+    "outlet_comid": [6267526],
+    "main": [68]
+  },
+  "cat-109": {
+    "member_comids": [6265790, 6265944, 6265778],
+    "outlet_comid": [6265790],
+    "main": [73]
+  },
+  "cat-105": {
+    "member_comids": [6265788, 6265770, 6265950],
+    "outlet_comid": [6265788],
+    "main": [74]
+  },
+  "cat-25": {
+    "member_comids": [6265766, 6265942, 6265762],
+    "outlet_comid": [6265766],
+    "main": [1]
+  },
+  "cat-196": {
+    "member_comids": [6269190, 6267914],
+    "outlet_comid": [6269190],
+    "main": [84]
+  },
+  "cat-185": {
+    "member_comids": [6269160, 6267696],
+    "outlet_comid": [6269160],
+    "main": [88]
+  },
+  "cat-82": {
+    "member_comids": [6268094, 6268096],
+    "outlet_comid": [6268094],
+    "main": [108]
+  },
+  "cat-191": {
+    "member_comids": [6267856, 6267838],
+    "outlet_comid": [6267856],
+    "main": [85]
+  },
+  "cat-48": {
+    "member_comids": [6267834],
+    "outlet_comid": [6267834],
+    "main": [86]
+  },
+  "cat-174": {
+    "member_comids": [6267822, 6267762],
+    "outlet_comid": [6267822],
+    "main": [92]
+  },
+  "cat-186": {
+    "member_comids": [6267752, 6267702],
+    "outlet_comid": [6267752],
+    "main": [87]
+  },
+  "cat-177": {
+    "member_comids": [6267742, 6267710],
+    "outlet_comid": [6267742],
+    "main": [91]
+  },
+  "cat-130": {
+    "member_comids": [6267670, 6267634],
+    "outlet_comid": [6267670],
+    "main": [99]
+  },
+  "cat-134": {
+    "member_comids": [6267644, 6267596],
+    "outlet_comid": [6267644],
+    "main": [97]
+  },
+  "cat-94": {
+    "member_comids": [6267600, 6267592],
+    "gages": ["02176930"],
+    "outlet_comid": [6267600],
+    "main": [106]
+  },
+  "cat-101": {
+    "member_comids": [6267494, 6265898],
+    "outlet_comid": [6267494],
+    "main": [105]
+  },
+  "cat-36": {
+    "member_comids": [6265940, 6265842],
+    "outlet_comid": [6265940],
+    "main": [15]
+  },
+  "cat-67": {
+    "member_comids": [6265882, 6265814],
+    "outlet_comid": [6265882],
+    "main": [104]
+  },
+  "cat-64": {
+    "member_comids": [6265852, 6265800],
+    "outlet_comid": [6265852],
+    "main": [112]
+  },
+  "cat-107": {
+    "member_comids": [6265768, 6265774],
+    "outlet_comid": [6265768],
+    "main": [102]
+  },
+  "cat-49": {
+    "member_comids": [6267734],
+    "outlet_comid": [6267734],
+    "main": [86]
+  },
+  "cat-119": {
+    "member_comids": [6267556],
+    "outlet_comid": [6267556],
+    "main": [169]
+  },
+  "cat-100": {
+    "member_comids": [6267528],
+    "outlet_comid": [6267528],
+    "main": [181]
+  },
+  "cat-98": {
+    "member_comids": [6265872],
+    "outlet_comid": [6265872],
+    "main": [60]
+  },
+  "cat-151": {
+    "member_comids": [6265840],
+    "outlet_comid": [6265840],
+    "main": [149]
+  },
+  "cat-104": {
+    "member_comids": [6265838],
+    "outlet_comid": [6265838],
+    "main": [178]
+  },
+  "cat-103": {
+    "member_comids": [6265812],
+    "outlet_comid": [6265812],
+    "main": [179]
+  },
+  "cat-115": {
+    "member_comids": [6265806],
+    "outlet_comid": [6265806],
+    "main": [173]
+  },
+  "cat-58": {
+    "member_comids": [6265798],
+    "outlet_comid": [6265798],
+    "main": [31]
+  },
+  "cat-106": {
+    "member_comids": [6265772],
+    "outlet_comid": [6265772],
+    "main": [177]
+  }
+}
