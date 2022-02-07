@@ -6,12 +6,12 @@ Modified by Luciana Cunha from 2013 Matthew Perry and AsgerPetersen:
 usage: generate_twi_per_basin.py [-h] [--output flag [--buffer distance] [--nodata value] [-f FORMAT]
                       catchments twi_raster slope_raster outputfolder_twi
 positional arguments:
-  namest                HUC Number
+  namestr               HUC Number
   catchments            hydrofabrics catchment
   twi_raster            Twi Raster file - generated with workflow_hand_twi_giuh.sh
   slope_raster          Slope Raster file - generated with workflow_hand_twi_giuh.sh
   dist_to_outlet_raster          Distance to Outlet Raster file - generated with workflow_hand_twi_giuh.sh
-  soil_params_file      CSV file with soil parameters from NWM 2.1 - part of the hydrofabric released in 08/2021  
+  NWM_param_file      CSV file with soil parameters from NWM 2.1 - part of the hydrofabric released in 08/2021  
   outputfolder_twi      Output folder
 
 optional arguments:
@@ -52,24 +52,31 @@ def bbox_to_pixel_offsets(gt, bbox):
 
 
 
-def generate_twi_per_basin(namestr,catchments, twi_raster,slope_raster, dist_to_outlet_raster, soil_params_file,outputfolder_twi,
+def generate_twi_per_basin(namestr,catchments, twi_raster,slope_raster, dist_to_outlet_raster, NWM_param_file,outputfolder_twi,
                     output_flag=1,
                     nodata_value=None,
                     global_src_extent=False,
                     buffer_distance=0):
 
 
-    outputfolder_twi_param_file=outputfolder_twi+"/TOPMODEL_param/"
-    if not os.path.exists(outputfolder_twi_param_file): os.mkdir(outputfolder_twi_param_file)
-    if not os.path.exists(soil_params_file):  print ("does not exist "  + soil_params_file)
-        
-    if(output_flag==1) & (os.path.isfile(soil_params_file)) & (os.path.isfile(soil_params_file)): 
-        soil_params=pd.read_csv(soil_params_file,index_col=0)
+    #outputfolder_twi_param_file=outputfolder_twi+"/TOPMODEL_param/"
+    #if not os.path.exists(outputfolder_twi_param_file): os.mkdir(outputfolder_twi_param_file)
+    if not os.path.exists(NWM_param_file):  print ("does not exist "  + NWM_param_file)
+    #outputfolder_twi_config_file=outputfolder_twi     
+    outputfolder_twi_config_file=outputfolder_twi+"/Topmodel/"
+    if not os.path.exists(outputfolder_twi_config_file): os.mkdir(outputfolder_twi_config_file)
+    # # outputfolder_twi_config_file=outputfolder_twi_config_file+"/"+namestr+"/"
+    # if not os.path.exists(outputfolder_twi_config_file): os.mkdir(outputfolder_twi_config_file)
+
+
+    vds = ogr.Open(catchments, GA_ReadOnly) 
+    assert(vds)
+    vlyr =  vds.GetLayer(0)
+       
+    if(output_flag==1) & (os.path.isfile(NWM_param_file)): 
+        soil_params=pd.read_csv(NWM_param_file,index_col=0)
         if(not "cat-" in str(soil_params.index[0])): soil_params.index = 'cat-' + soil_params.index.astype(str)
-        soil_params['dksat_soil_layers_stag=1_Time=1']= soil_params['dksat_soil_layers_stag=1_Time=1'].fillna(1)
-        
-        outputfolder_twi_config_file=outputfolder_twi+"/TOPMODEL_cat_file/"
-        if not os.path.exists(outputfolder_twi_config_file): os.mkdir(outputfolder_twi_config_file)
+        soil_params['dksat_soil_layers_stag=1_Time=1']= soil_params['sp_dksat_soil_layers_stag=1'].fillna(1)
     else:
         
         skippednulgeoms = False
@@ -162,7 +169,7 @@ def generate_twi_per_basin(namestr,catchments, twi_raster,slope_raster, dist_to_
     count = 0
     feat = vlyr.GetNextFeature()
     CatIDdict={}
-    Test=-999
+    Test=-9
     # while flag==0:
     #     cat = feat.GetField('ID')
     #     count = count + 1
@@ -172,12 +179,13 @@ def generate_twi_per_basin(namestr,catchments, twi_raster,slope_raster, dist_to_
     #     else:
     #         rvds = None
     #         mem_ds = None
-    #         feat = vlyr.GetNextFeature()
-
-    while feat is not None:
-        cat = feat.GetField('ID')
-        count = count + 1
+    #         feat = vlyr.GetNextFeature()    
         
+    while feat is not None:
+        cat = feat.GetField('ID')       
+        catstr=str(cat)
+
+        count = count + 1
         if count % 100 == 0:
             sys.stdout.write("\r{0} of {1}".format(count, total))
             sys.stdout.flush()
@@ -217,8 +225,9 @@ def generate_twi_per_basin(namestr,catchments, twi_raster,slope_raster, dist_to_
         #print ("src_array")   
         #print (src_array)
         # Create a temporary vector layer in memory
+
         if not src_array is None:
-            
+
             # 1 - First calculate histogram TWI
             mem_ds = mem_drv.CreateDataSource('out')
             mem_layer = mem_ds.CreateLayer('mem_lyr', None, mem_type)
@@ -254,20 +263,19 @@ def generate_twi_per_basin(namestr,catchments, twi_raster,slope_raster, dist_to_
             )
             all_valid_values_in_basin=((masked.mask==False)).sum()
             Check=100*all_valid_values_in_basin/all_values_in_basin # Porcentage of valid numbers in the polygone
-            if(Check>80):             
-               
+            
+            if(Check>50):    
+                
                 maskedArray=np.ma.filled(masked.astype(float), np.nan).flatten()
                 
                 #N_elem_valid=(masked>0).sum()
                 #Porc_valid=100*N_elem_valid/N_elem_polygon
                 #print (" Col " + str(len(src_array)) + " row " +str(len(src_array[0])) + " row " + str(len(src_array[0])))
-                #all_values1=len(src_array)*len(src_array[0])
+                all_values1=len(src_array)*len(src_array[0])
                 if(cat==Test): ("col " + str(len(masked))  + " row " + str(len(masked[0])))
                 if(cat==Test): 
                     print ("maskedArray " + str(len(maskedArray)))
     
-                if(cat==Test): 
-                    print (" all_values1 " + str(all_values1) + " all_values " +str(all_values))
                 maskedArray2=maskedArray[(maskedArray!=nodata_value) & (~np.isnan(maskedArray)) & (maskedArray>0)]
                 if(cat==Test): 
                     print ("maskedArray2 " + str(len(maskedArray2)))
@@ -276,7 +284,9 @@ def generate_twi_per_basin(namestr,catchments, twi_raster,slope_raster, dist_to_
                 sorted_array = np.sort(maskedArray2)
                 all_values=((masked.mask==False) & (masked.data>0)).sum() # False where the basin is, not sure why. So counting pixels in the basin
                 filtered_values=len(sorted_array) # Valid values
-            
+                if(cat==Test): 
+                    print (" all_values1 " + str(all_values1) + " all_values " +str(all_values))
+           
                                                 
                 if(cat==Test): print ("In loop to generate info" + str(cat) + " Freq "+ str(100*filtered_values/all_values) + " all values "+ str(all_values) + " filtered_values " + str(filtered_values))
                 #print ("In loop to generate info" + str(cat) + " Freq "+ str(100*filtered_values/all_values) + " all values "+ str(all_values) + " filtered_values " + str(filtered_values))
@@ -294,8 +304,8 @@ def generate_twi_per_basin(namestr,catchments, twi_raster,slope_raster, dist_to_
                 #Scatter plot of CDF
                 #CDF.to_csv(os.path.join(outputfolder_twi, "CDF_" + str(cat) + '.csv'), index=False)
                 #CDFplot = CDF.plot(kind='scatter',x='TWI',y='AccumFreq',color='blue').get_figure()
-                DatFile=os.path.join(outputfolder_twi_param_file,"cat-"+str(cat)+"_twi.csv")
-                CDF.to_csv(DatFile)     
+                #DatFile=os.path.join(outputfolder_twi_param_file,"cat-"+str(cat)+"_twi.csv")
+                #CDF.to_csv(DatFile)     
                 
                 # 2 - Second calculate the width function
     
@@ -346,27 +356,45 @@ def generate_twi_per_basin(namestr,catchments, twi_raster,slope_raster, dist_to_
                 #Scatter plot of CDF
                 #CDF.to_csv(os.path.join(outputfolder_twi, "CDF_" + str(cat) + '.csv'), index=False)
                 #CDFplot = CDF.plot(kind='scatter',x='TWI',y='AccumFreq',color='blue').get_figure()
-                DatFile=os.path.join(outputfolder_twi_param_file,"cat-"+str(cat)+"_d2o.csv")
-                DatFile=DatFile.replace("cat-cat-","cat-")
-                CDF_D2O.to_csv(DatFile)                  
+                #DatFile=os.path.join(outputfolder_twi_param_file,"cat-"+str(cat)+"_d2o.csv")
+                #DatFile=DatFile.replace("cat-cat-","cat-")
+                #CDF_D2O.to_csv(DatFile)                  
                 
                 if(output_flag==1):
                     
-                    DatFile=os.path.join(outputfolder_twi_config_file,"params_"+str(cat)+".dat")
+                    # Topmodel requires one directory per catchment since topmod.run needs to have the same name
+                    # outputfolder_data = outputfolder_twi_config_file+"/"+catstr+"/"
+                    # if not os.path.exists(outputfolder_data): os.mkdir(outputfolder_data)
+                    
+                    RunTop_File=os.path.join(outputfolder_twi_config_file,"topmod_"+catstr+".run")
+                    f= open(RunTop_File, "w")                    
+                    f.write("%s" %("0\n"))  
+                    f.write("%s" %(namestr+"-"+catstr+"\n")) 
+                    f.write("%s" %("./forcing/"+catstr+".csv\n")) 
+                    f.write("%s" %("./Topmodel/"+"subcat_"+catstr+".dat\n")) 
+                    f.write("%s" %("./Topmodel/"+"params_"+catstr+".dat\n")) 
+                    f.write("%s" %("./Topmodel/"+"topmod_"+catstr+".out\n")) 
+                    f.write("%s" %("./Topmodel/"+"hyd_"+catstr+".out\n")) 
+                    f.close()
+                    
+                    DatFile=os.path.join(outputfolder_twi_config_file,"params_"+catstr+".dat")
                     #DatFile=DatFile.replace("cat-cat-","cat-")
                     f= open(DatFile, "w")
                     
-                    f.write("%s" %("Extracted study basin: "+str(cat)+"\n")) 
-                    strparam="0.032  5.0  50.  3600.0  3600.0  0.05  0.0000328  0.002  0  "+str(soil_params.loc[cat]['dksat_soil_layers_stag=1_Time=1'])+"  0.02  0.1\n"
+                    f.write("%s" %("Extracted study basin: "+catstr+"\n")) 
+                    # Use NWM value for hydraulic conductivity - str(soil_params.loc[cat]['dksat_soil_layers_stag=1_Time=1'])
+                    # strparam="0.032  5.0  50.  3600.0  3600.0  0.05  0.0000328  0.002  0  "+str(soil_params.loc[cat]['dksat_soil_layers_stag=1_Time=1'])+"  0.02  0.1\n"
+                    # Not use NWM - it does not really matter if infex=0
+                    strparam="0.032  5.0  50.  3600.0  3600.0  0.05  0.0000328  0.002  0  1.0  0.02  0.1\n"
                     f.write("%s" %(strparam))  
                     f.close()
                     #DirCat=os.path.join(outputfolder_twi, str(cat))
                 #if not os.path.exists(DirCat): os.mkdir(DirCat)
-                    DatFile=os.path.join(outputfolder_twi_config_file,"subcat_"+str(cat)+".dat")
+                    DatFile=os.path.join(outputfolder_twi_config_file,"subcat_"+catstr+".dat")
                     #DatFile=DatFile.replace("cat-cat-cat","cat-cat")
                     f= open(DatFile, "w")
                     f.write("1  1  1\n")
-                    f.write("%s" %("Extracted study basin: " + str(cat) +"\n"))
+                    f.write("%s" %("Extracted study basin: " + catstr +"\n"))
                     f.write("%s" %(str(nclasses)+" 1\n"))
                     for icdf in range(0,len(CDF)):
                         strdata="{0:.6f}".format((round(CDF['Freq'].iloc[icdf],6))) + " " + "{0:.6f}".format((round(CDF['TWI'].iloc[icdf],6))) +"\n"
@@ -410,7 +438,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("namest",
+    parser.add_argument("namestr",
                         help="HUC name")
     parser.add_argument("catchments",
                         help="Vector source")
@@ -420,7 +448,7 @@ if __name__ == "__main__":
                         help=" Slope file")
     parser.add_argument("dist_to_outlet_raster",
                         help=" distance to outlet")
-    parser.add_argument("soil_params_file",
+    parser.add_argument("NWM_param_file",
                         help="CSV file with NWM 2.1 soil params")    
     
     parser.add_argument("outputfolder_twi",
@@ -436,12 +464,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    generate_twi_per_basin(args.namest,args.catchments, args.twi_raster, args.slope_raster, args.dist_to_outlet_raster, args.soil_params_file, args.outputfolder_twi,
+    generate_twi_per_basin(args.namestr,args.catchments, args.twi_raster, args.slope_raster, args.dist_to_outlet_raster, args.NWM_param_file, args.outputfolder_twi,
                     nodata_value = args.nodata,
                     global_src_extent = args.preload,
                     buffer_distance = args.buffer,
                     output_flag = args.output,                    
                     )
 
-
-   
