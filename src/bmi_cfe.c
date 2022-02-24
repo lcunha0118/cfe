@@ -159,8 +159,8 @@ static const char *output_var_names[OUTPUT_VAR_NAME_COUNT] = {
         "NASH_LATERAL_RUNOFF",
         "DEEP_GW_TO_CHANNEL_FLUX",
         "Q_OUT",
-        "POTENTIAL_EVPT",
-        "ACTUAL_EVPT"
+        "POTENTIAL_ET",
+        "ACTUAL_ET"
 };
 
 static const char *output_var_types[OUTPUT_VAR_NAME_COUNT] = {
@@ -1325,14 +1325,14 @@ static int Get_value_ptr (Bmi *self, const char *name, void **dest)
         return BMI_SUCCESS;
     }
 
-    if (strcmp (name, "POTENTIAL_EVPT") == 0) {
+    if (strcmp (name, "POTENTIAL_ET") == 0) {
         cfe_state_struct *cfe_ptr;
         cfe_ptr = (cfe_state_struct *) self->data;
         *dest = (void*)&cfe_ptr-> et_struct.potential_et_m_per_timestep;
         return BMI_SUCCESS;
     }
 
-    if (strcmp (name, "ACTUAL_EVPT") == 0) {
+    if (strcmp (name, "ACTUAL_ET") == 0) {
         cfe_state_struct *cfe_ptr;
         cfe_ptr = (cfe_state_struct *) self->data;
         *dest = (void*)&cfe_ptr-> et_struct.actual_et_m_per_timestep;
