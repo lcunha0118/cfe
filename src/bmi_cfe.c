@@ -1325,12 +1325,14 @@ static int Get_value_ptr (Bmi *self, const char *name, void **dest)
         return BMI_SUCCESS;
     }
 
+
     if (strcmp (name, "POTENTIAL_ET") == 0) {
         cfe_state_struct *cfe_ptr;
         cfe_ptr = (cfe_state_struct *) self->data;
         *dest = (void*)&cfe_ptr-> et_struct.potential_et_m_per_timestep;
         return BMI_SUCCESS;
     }
+
 
     if (strcmp (name, "ACTUAL_ET") == 0) {
         cfe_state_struct *cfe_ptr;
