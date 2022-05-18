@@ -12,9 +12,19 @@
 #define CFE_DEGUG 0
 
 #define INPUT_VAR_NAME_COUNT 2
-#define OUTPUT_VAR_NAME_COUNT 6
+#define OUTPUT_VAR_NAME_COUNT 10
 #define STATE_VAR_NAME_COUNT 89   // must match var_info array size
 
+#define PARAM_VAR_NAME_COUNT 10
+static const char *param_var_names[PARAM_VAR_NAME_COUNT] = {
+    "maxsmc", "satdk", "slope", "b", "multiplier", "Klf", 
+    "Kn", "Cgw", "expon", "max_gw_storage"
+};
+
+static const char *param_var_types[PARAM_VAR_NAME_COUNT] = {
+    "double", "double", "double", "double", "double", "double",
+    "double", "double", "double", "double"
+};
 //----------------------------------------------
 // Put variable info into a struct to simplify
 // BMI implementation and avoid errors.
@@ -152,16 +162,22 @@ int j = 0;
 // Don't forget to update Get_value/Get_value_at_indices (and setter) implementation if these are adjusted
 static const char *output_var_names[OUTPUT_VAR_NAME_COUNT] = {
         "RAIN_RATE",
-        /* xinanjiang_dev
-        "SCHAAKE_OUTPUT_RUNOFF",*/
         "DIRECT_RUNOFF",
         "GIUH_RUNOFF",
         "NASH_LATERAL_RUNOFF",
         "DEEP_GW_TO_CHANNEL_FLUX",
-        "Q_OUT"
+        "Q_OUT",
+        "POTENTIAL_ET",
+        "ACTUAL_ET",
+        "GW_STORAGE",
+        "SOIL_STORAGE"
 };
 
 static const char *output_var_types[OUTPUT_VAR_NAME_COUNT] = {
+        "double",
+        "double",
+        "double",
+        "double",
         "double",
         "double",
         "double",
@@ -176,10 +192,18 @@ static const int output_var_item_count[OUTPUT_VAR_NAME_COUNT] = {
         1,
         1,
         1,
+        1,
+        1,
+        1,
+        1,
         1
 };
 
 static const char *output_var_units[OUTPUT_VAR_NAME_COUNT] = {
+        "m",
+        "m",
+        "m",
+        "m",
         "m",
         "m",
         "m",
@@ -194,10 +218,18 @@ static const int output_var_grids[OUTPUT_VAR_NAME_COUNT] = {
         0,
         0,
         0,
+        0,
+        0,
+        0,
+        0,
         0
 };
 
 static const char *output_var_locations[OUTPUT_VAR_NAME_COUNT] = {
+        "node",
+        "node",
+        "node",
+        "node",
         "node",
         "node",
         "node",
@@ -314,8 +346,10 @@ static int count_delimited_values(char* string_val, char* delimiter)
     return count;
 }
 
-int read_init_config_cfe(const char* config_file, cfe_state_struct* model, double* alpha_fc, double* soil_storage,
+/*int read_init_config_cfe(const char* config_file, cfe_state_struct* model, double* alpha_fc, double* soil_storage,
                      int* is_soil_storage_ratio)
+{*/
+int read_init_config_cfe(const char* config_file, cfe_state_struct* model, double* alpha_fc, double* soil_storage)
 {
     int config_line_count, max_config_line_length;
     // Note that this determines max line length including the ending return character, if present
@@ -374,6 +408,8 @@ int read_init_config_cfe(const char* config_file, cfe_state_struct* model, doubl
     int is_soil_params__slop_set = FALSE;
     int is_soil_params__smcmax_set = FALSE;
     int is_soil_params__wltsmc_set = FALSE;
+    int is_soil_params__expon_set = FALSE;
+    int is_soil_params__expon2_set = FALSE;
     int is_Cgw_set = FALSE;
     int is_expon_set = FALSE;
     int is_alpha_fc_set = FALSE;
@@ -398,8 +434,8 @@ int read_init_config_cfe(const char* config_file, cfe_state_struct* model, doubl
     // Default value
     double refkdt = 3.0;
 
-    int is_gw_storage_ratio = FALSE;
-    double gw_storage_literal;
+    //int is_gw_storage_ratio = FALSE;
+    //double gw_storage_literal;
     // Also keep track of Nash stuff and properly set at the end of reading the config file
     int num_nash_lf = 2;
     char* nash_storage_string_val;
@@ -411,7 +447,7 @@ int read_init_config_cfe(const char* config_file, cfe_state_struct* model, doubl
     // Additionally,
 
     for (i = 0; i < config_line_count; i++) {
-        char *param_key, *param_value;
+        char *param_key, *param_value, *param_units;
         fgets(config_line, max_config_line_length + 1, fp);
 #if CFE_DEGUG >= 3
         printf("Line value: ['%s']\n", config_line);
@@ -419,11 +455,14 @@ int read_init_config_cfe(const char* config_file, cfe_state_struct* model, doubl
         char* config_line_ptr = config_line;
         config_line_ptr = strsep(&config_line_ptr, "\n");
         param_key = strsep(&config_line_ptr, "=");
-        param_value = strsep(&config_line_ptr, "=");
+        //param_value = strsep(&config_line_ptr, "=");
+        param_value = strsep(&config_line_ptr, "[");
+        param_units = strsep(&config_line_ptr, "]");
 
-#if CFE_DEGUG >= 2
-        printf("Config Value - Param: '%s' | Value: '%s'\n", param_key, param_value);
+#if CFE_DEGUG >= 1
+        printf("Config Value - Param: '%s' | Value: '%s' | Units: '%s'\n", param_key, param_value, param_units);
 #endif
+        //printf(" %s | Value: %s | Units: %s\n", param_key, param_value, param_units);
 
         if (strcmp(param_key, "forcing_file") == 0) {
             model->forcing_file = strdup(param_value);
@@ -437,6 +476,12 @@ int read_init_config_cfe(const char* config_file, cfe_state_struct* model, doubl
         if (strcmp(param_key, "soil_params.D") == 0 || strcmp(param_key, "soil_params.depth") == 0) {
             model->NWM_soil_params.D = strtod(param_value, NULL);
             is_soil_params__depth_set = TRUE;
+            // Check if units are present and print warning if missing from config file
+            if ((param_units == NULL) || (strlen(param_units) < 1)) {
+#if CFE_DEGUG >= 1            
+                printf ("WARNING: [units] expected for '%s' in config file \n", param_key);
+#endif
+            }
             continue;
         }
         if (strcmp(param_key, "soil_params.bb") == 0 || strcmp(param_key, "soil_params.b") == 0) {
@@ -447,40 +492,92 @@ int read_init_config_cfe(const char* config_file, cfe_state_struct* model, doubl
         if (strcmp(param_key, "soil_params.satdk") == 0) {
             model->NWM_soil_params.satdk = strtod(param_value, NULL);
             is_soil_params__satdk_set = TRUE;
+            // Check if units are present and print warning if missing from config file
+            if ((param_units == NULL) || (strlen(param_units) < 1)) {
+#if CFE_DEGUG >= 1            
+                printf ("WARNING: [units] expected for '%s' in config file \n", param_key);
+#endif
+            }
             continue;
         }
         if (strcmp(param_key, "soil_params.satpsi") == 0) {
             model->NWM_soil_params.satpsi = strtod(param_value, NULL);
             is_soil_params__satpsi_set = TRUE;
+            // Check if units are present and print warning if missing from config file
+            if ((param_units == NULL) || (strlen(param_units) < 1)) {
+#if CFE_DEGUG >= 1            
+                printf ("WARNING: [units] expected for '%s' in config file \n", param_key);
+#endif
+            }
             continue;
         }
         if (strcmp(param_key, "soil_params.slope") == 0 || strcmp(param_key, "soil_params.slop") == 0) {
             model->NWM_soil_params.slop = strtod(param_value, NULL);
             is_soil_params__slop_set = TRUE;
+            // Check if units are present and print warning if missing from config file
+            if ((param_units == NULL) || (strlen(param_units) < 1)) {
+#if CFE_DEGUG >= 1            
+                printf ("WARNING: [units] expected for '%s' in config file \n", param_key);
+#endif
+            }
             continue;
         }
         if (strcmp(param_key, "soil_params.smcmax") == 0 || strcmp(param_key, "soil_params.maxsmc") == 0) {
             model->NWM_soil_params.smcmax = strtod(param_value, NULL);
             is_soil_params__smcmax_set = TRUE;
+            // Check if units are present and print warning if missing from config file
+            if ((param_units == NULL) || (strlen(param_units) < 1)) {
+#if CFE_DEGUG >= 1            
+                printf ("WARNING: [units] expected for '%s' in config file \n", param_key);
+#endif
+            }
             continue;
         }
         if (strcmp(param_key, "soil_params.wltsmc") == 0) {
             model->NWM_soil_params.wltsmc = strtod(param_value, NULL);
             is_soil_params__wltsmc_set = TRUE;
+            // Check if units are present and print warning if missing from config file
+            if ((param_units == NULL) || (strlen(param_units) < 1)) {
+#if CFE_DEGUG >= 1            
+                printf ("WARNING: [units] expected for '%s' in config file \n", param_key);
+#endif
+            }
+            continue;
+        }
+        if (strcmp(param_key, "soil_params.expon") == 0) {
+            model->soil_reservoir.exponent_primary = strtod(param_value, NULL);
+            is_soil_params__expon_set = TRUE;
+            continue;
+        }
+        if (strcmp(param_key, "soil_params.expon_secondary") == 0) {
+            model->soil_reservoir.exponent_secondary = strtod(param_value, NULL);
+            is_soil_params__expon2_set = TRUE;
             continue;
         }
         if (strcmp(param_key, "max_gw_storage") == 0) {
             model->gw_reservoir.storage_max_m = strtod(param_value, NULL);
             is_gw_max_set = TRUE;
-            // Also set the true storage if storage was already read and was a ratio, and so we were waiting for this
-            if (is_gw_storage_set == TRUE && is_gw_storage_ratio == TRUE) {
-                model->gw_reservoir.storage_m = (gw_storage_literal / 100.0) * model->gw_reservoir.storage_max_m;
+            // Check if units are present and print warning if missing from config file
+            if ((param_units == NULL) || (strlen(param_units) < 1)) {
+#if CFE_DEGUG >= 1            
+                printf ("WARNING: [units] expected for '%s' in config file \n", param_key);
+#endif
             }
+            // Also set the true storage if storage was already read and was a ratio, and so we were waiting for this
+/*            if (is_gw_storage_set == TRUE && is_gw_storage_ratio == TRUE) {
+                model->gw_reservoir.storage_m = (gw_storage_literal / 100.0) * model->gw_reservoir.storage_max_m;
+            }*/
             continue;
         }
         if (strcmp(param_key, "Cgw") == 0) {
             model->gw_reservoir.coeff_primary = strtod(param_value, NULL);
             is_Cgw_set = TRUE;
+            // Check if units are present and print warning if missing from config file
+            if ((param_units == NULL) || (strlen(param_units) < 1)) {
+#if CFE_DEGUG >= 1            
+                printf ("WARNING: [units] expected for '%s' in config file \n", param_key);
+#endif
+            }
             continue;
         }
         if (strcmp(param_key, "expon") == 0) {
@@ -489,8 +586,15 @@ int read_init_config_cfe(const char* config_file, cfe_state_struct* model, doubl
             continue;
         }
         if (strcmp(param_key, "gw_storage") == 0) {
+            model->gw_reservoir.storage_m = strtod(param_value, NULL);
             is_gw_storage_set = TRUE;
-            char* trailing_chars;
+            // Check if units are present and print warning if missing from config file
+            if ((param_units == NULL) || (strlen(param_units) < 1)) {
+#if CFE_DEGUG >= 1            
+                printf ("WARNING: [units] expected for '%s' in config file \n", param_key);
+#endif
+            }
+/*            char* trailing_chars;
             gw_storage_literal = strtod(param_value, &trailing_chars);
             if (strcmp(trailing_chars, "%") == 0) {
                 is_gw_storage_ratio = TRUE;
@@ -501,7 +605,7 @@ int read_init_config_cfe(const char* config_file, cfe_state_struct* model, doubl
             }
             if (is_gw_storage_ratio == TRUE && is_gw_max_set == TRUE) {
                 model->gw_reservoir.storage_m = (gw_storage_literal / 100.0) * model->gw_reservoir.storage_max_m;
-            }
+            }*/
             continue;
         }
         if (strcmp(param_key, "alpha_fc") == 0) {
@@ -510,11 +614,18 @@ int read_init_config_cfe(const char* config_file, cfe_state_struct* model, doubl
             continue;
         }
         if (strcmp(param_key, "soil_storage") == 0) {
-            char* trailing_chars;
+/*            char* trailing_chars;
             double parsed_value = strtod(param_value, &trailing_chars);
             *is_soil_storage_ratio = strcmp(trailing_chars, "%") == 0 ? TRUE : FALSE;
-            *soil_storage = *is_soil_storage_ratio == TRUE ? (parsed_value / 100.0) : parsed_value;
+            *soil_storage = *is_soil_storage_ratio == TRUE ? (parsed_value / 100.0) : parsed_value;*/
+            *soil_storage = strtod(param_value, NULL);
             is_soil_storage_set = TRUE;
+            // Check if units are present and print warning if missing from config file
+            if ((param_units == NULL) || (strlen(param_units) < 1)) {
+#if CFE_DEGUG >= 1            
+                printf ("WARNING: [units] expected for '%s' in config file \n", param_key);
+#endif
+            }
             continue;
         }
         if (strcmp(param_key, "number_nash_reservoirs") == 0 || strcmp(param_key, "N_nash") == 0) {
@@ -628,6 +739,23 @@ int read_init_config_cfe(const char* config_file, cfe_state_struct* model, doubl
 #endif
         return BMI_FAILURE;
     }
+    if (is_soil_params__expon_set == FALSE) {
+#if CFE_DEGUG >= 1
+        printf("Config param 'soil_params.expon' not found in config file, defaulting to 1 (linear)\n");
+#endif
+        model->soil_reservoir.exponent_primary = 1.0;
+        //is_soil_params__expon_set == TRUE;
+        // Don't return BMI_FAILURE, this is a optional config
+        //return BMI_FAILURE;
+    }
+    if (is_soil_params__expon2_set == FALSE) {
+#if CFE_DEGUG >= 1
+        printf("Config param 'soil_params.expon_secondary' not found in config file, defaulting to 1 (linear)\n");
+#endif
+        model->soil_reservoir.exponent_secondary = 1.0;
+        // Don't return BMI_FAILURE, this is a optional config
+        //return BMI_FAILURE;
+    }
     if (is_Cgw_set == FALSE) {
 #if CFE_DEGUG >= 1
         printf("Config param 'Cgw' not found in config file\n");
@@ -686,6 +814,12 @@ int read_init_config_cfe(const char* config_file, cfe_state_struct* model, doubl
         printf("Config param 'verbosity' not found in config file\n");
         printf("setting verbosity to a high value\n");
         model->verbosity = 10;
+        return BMI_FAILURE;
+    }
+    if (is_direct_runoff_method_set == FALSE) {
+#if CFE_DEGUG >= 1
+        printf("Config param 'direct_runoff_method' not found in config file\n");
+#endif
         return BMI_FAILURE;
     }
 /* xinanjiang_dev*/
@@ -793,6 +927,13 @@ int read_init_config_cfe(const char* config_file, cfe_state_struct* model, doubl
 
 static int Initialize (Bmi *self, const char *file)
 {
+    //FIXME, we can use the input file to help imply "framework" support or "standalone"
+    //an empty init file string indicates things will come from set_value???
+    //what happens when both occur, that is we have a config file and framewrok
+    //using set_value after init???
+
+    //Consider enumeration of failure states and how that might look across multiple languages
+    //integrating into a framework
 
     cfe_state_struct* cfe_bmi_data_ptr;
 
@@ -803,17 +944,18 @@ static int Initialize (Bmi *self, const char *file)
 
     cfe_bmi_data_ptr->current_time_step = 0;
 
-    double alpha_fc, max_soil_storage, S_soil;
-    int is_S_soil_ratio;
+    double alpha_fc, /*max_soil_storage,*/ S_soil;
+    //int is_S_soil_ratio;
 
-    int config_read_result = read_init_config_cfe(file, cfe_bmi_data_ptr, &alpha_fc, &S_soil, &is_S_soil_ratio);
+    int config_read_result = read_init_config_cfe(file, cfe_bmi_data_ptr, &alpha_fc, &S_soil);
     if (config_read_result == BMI_FAILURE)
         return BMI_FAILURE;
 
     // time_step_size is set to 3600 in the "new_bmi_cfe" function.
     cfe_bmi_data_ptr->timestep_h = cfe_bmi_data_ptr->time_step_size / 3600.0;
      
-    max_soil_storage = cfe_bmi_data_ptr->NWM_soil_params.D * cfe_bmi_data_ptr->NWM_soil_params.smcmax;
+    // JG NOTE: this is done in init_soil_reservoir
+    //max_soil_storage = cfe_bmi_data_ptr->NWM_soil_params.D * cfe_bmi_data_ptr->NWM_soil_params.smcmax;
 
 
     /***********************************************************************
@@ -926,7 +1068,7 @@ static int Initialize (Bmi *self, const char *file)
     cfe_bmi_data_ptr->gw_reservoir.exponent_secondary = 1.0;             // linear
 
     // Initialize soil conceptual reservoirs
-    init_soil_reservoir(cfe_bmi_data_ptr, alpha_fc, max_soil_storage, S_soil, is_S_soil_ratio);
+    init_soil_reservoir(cfe_bmi_data_ptr, alpha_fc, S_soil);
 
     // Initialize the runoff queue to empty to start with
     cfe_bmi_data_ptr->runoff_queue_m_per_timestep = malloc(sizeof(double) * cfe_bmi_data_ptr->num_giuh_ordinates + 1);
@@ -939,7 +1081,9 @@ static int Initialize (Bmi *self, const char *file)
     cfe_bmi_data_ptr->et_struct.potential_et_m_per_s = 0;
     cfe_bmi_data_ptr->et_struct.actual_et_m_per_timestep = 0;
     cfe_bmi_data_ptr->et_struct.potential_et_m_per_timestep = 0;
-
+    cfe_bmi_data_ptr->et_struct.reduced_potential_et_m_per_timestep = 0;
+    cfe_bmi_data_ptr->et_struct.actual_et_from_rain_m_per_timestep = 0;
+    cfe_bmi_data_ptr->et_struct.actual_et_from_soil_m_per_timestep = 0;
     // Set all the mass balance trackers to zero.
     initialize_volume_trackers(cfe_bmi_data_ptr);
 
@@ -1108,6 +1252,11 @@ static int Get_adjusted_index_for_variable(const char *name)
             return i + OUTPUT_VAR_NAME_COUNT;
     }
 
+    for (i = 0; i < PARAM_VAR_NAME_COUNT; i++){
+    if (strcmp(name, param_var_names[i]) == 0)
+        return i + INPUT_VAR_NAME_COUNT + OUTPUT_VAR_NAME_COUNT;
+    }
+
     return -1;
 }
 
@@ -1137,6 +1286,8 @@ static int Get_var_grid(Bmi *self, const char *name, int *grid)
 
 static int Get_var_type (Bmi *self, const char *name, char * type)
 {
+    //TODO may need to expose type info for "hidden" parameter values
+    //or impose BMI side casting of double to whatever type
     // Check to see if in output array first
     for (i = 0; i < OUTPUT_VAR_NAME_COUNT; i++) {
         if (strcmp(name, output_var_names[i]) == 0) {
@@ -1151,6 +1302,14 @@ static int Get_var_type (Bmi *self, const char *name, char * type)
             return BMI_SUCCESS;
         }
     }
+
+    for (i = 0; i < PARAM_VAR_NAME_COUNT; i++) {
+        if (strcmp(name, param_var_names[i]) == 0) {
+            strncpy(type, param_var_types[i], BMI_MAX_TYPE_NAME);
+            return BMI_SUCCESS;
+        }
+    }
+
     // If we get here, it means the variable name wasn't recognized
     type[0] = '\0';
     return BMI_FAILURE;
@@ -1159,6 +1318,8 @@ static int Get_var_type (Bmi *self, const char *name, char * type)
 
 static int Get_var_itemsize (Bmi *self, const char *name, int * size)
 {
+    //TODO may need to implement for "hidden" parameter variables
+    //or impose BMI side casting from double to desired type
     char type[BMI_MAX_TYPE_NAME];
     int type_result = Get_var_type(self, name, type);
     if (type_result != BMI_SUCCESS) {
@@ -1269,6 +1430,72 @@ static int Get_var_nbytes (Bmi *self, const char *name, int * nbytes)
 
 static int Get_value_ptr (Bmi *self, const char *name, void **dest)
 {
+    /*********** Calibration Params Hacked ************/
+    if (strcmp (name, "maxsmc") == 0) {
+        cfe_state_struct *cfe_ptr;
+        cfe_ptr = (cfe_state_struct *) self->data;
+        *dest = (void*)&cfe_ptr->NWM_soil_params.smcmax;
+        return BMI_SUCCESS;
+    }
+    if (strcmp (name, "satdk") == 0) {
+        cfe_state_struct *cfe_ptr;
+        cfe_ptr = (cfe_state_struct *) self->data;
+        *dest = (void*)&cfe_ptr->NWM_soil_params.satdk;
+        return BMI_SUCCESS;
+    }
+    if (strcmp (name, "slope") == 0) {
+        cfe_state_struct *cfe_ptr;
+        cfe_ptr = (cfe_state_struct *) self->data;
+        *dest = (void*)&cfe_ptr->NWM_soil_params.slop;
+        return BMI_SUCCESS;
+    }
+    if (strcmp (name, "b") == 0) {
+        cfe_state_struct *cfe_ptr;
+        cfe_ptr = (cfe_state_struct *) self->data;
+        *dest = (void*)&cfe_ptr->NWM_soil_params.bb;
+        return BMI_SUCCESS;
+    }
+    if (strcmp (name, "multiplier") == 0) {
+        cfe_state_struct *cfe_ptr;
+        cfe_ptr = (cfe_state_struct *) self->data;
+        *dest = (void*)&cfe_ptr->NWM_soil_params.mult;
+        return BMI_SUCCESS;
+    }
+    if (strcmp (name, "Klf") == 0) {
+        cfe_state_struct *cfe_ptr;
+        cfe_ptr = (cfe_state_struct *) self->data;
+        *dest = (void*)&cfe_ptr->soil_reservoir.coeff_secondary;
+        return BMI_SUCCESS;
+    }
+    if (strcmp (name, "Kn") == 0) {
+        cfe_state_struct *cfe_ptr;
+        cfe_ptr = (cfe_state_struct *) self->data;
+        *dest = (void*)&cfe_ptr->K_nash;
+        return BMI_SUCCESS;
+    }
+    if (strcmp (name, "Cgw") == 0) {
+        cfe_state_struct *cfe_ptr;
+        cfe_ptr = (cfe_state_struct *) self->data;
+        *dest = (void*)&cfe_ptr->gw_reservoir.coeff_primary;
+        return BMI_SUCCESS;
+    }
+    if (strcmp (name, "expon") == 0) {
+        cfe_state_struct *cfe_ptr;
+        cfe_ptr = (cfe_state_struct *) self->data;
+        *dest = (void*)&cfe_ptr->gw_reservoir.exponent_primary;
+        return BMI_SUCCESS;
+    }
+    if (strcmp (name, "max_gw_storage") == 0) {
+        cfe_state_struct *cfe_ptr;
+        cfe_ptr = (cfe_state_struct *) self->data;
+        *dest = (void*)&cfe_ptr->gw_reservoir.storage_max_m;
+        return BMI_SUCCESS;
+    }
+    
+    
+    //NOT MESSING WITH nash_n (number of nash cascades) cause it is a bit of a side
+    //effecting value when it changes
+
     /***********************************************************/
     /***********    OUTPUT   ***********************************/
     /***********************************************************/
@@ -1310,6 +1537,33 @@ static int Get_value_ptr (Bmi *self, const char *name, void **dest)
         return BMI_SUCCESS;
     }
 
+    if (strcmp (name, "POTENTIAL_ET") == 0) {
+        cfe_state_struct *cfe_ptr;
+        cfe_ptr = (cfe_state_struct *) self->data;
+        *dest = (void*)&cfe_ptr-> et_struct.potential_et_m_per_timestep;
+        return BMI_SUCCESS;
+    }
+
+    if (strcmp (name, "ACTUAL_ET") == 0) {
+        cfe_state_struct *cfe_ptr;
+        cfe_ptr = (cfe_state_struct *) self->data;
+        *dest = (void*)&cfe_ptr-> et_struct.actual_et_m_per_timestep;
+        return BMI_SUCCESS;
+    }
+    
+    if (strcmp (name, "GW_STORAGE") == 0) {
+        cfe_state_struct *cfe_ptr;
+        cfe_ptr = (cfe_state_struct *) self->data;
+        *dest = (void*)&cfe_ptr-> gw_reservoir.storage_m;
+        return BMI_SUCCESS;
+    }
+    
+    if (strcmp (name, "SOIL_STORAGE") == 0) {
+        cfe_state_struct *cfe_ptr;
+        cfe_ptr = (cfe_state_struct *) self->data;
+        *dest = (void*)&cfe_ptr-> soil_reservoir.storage_m;
+        return BMI_SUCCESS;
+    }
     /***********************************************************/
     /***********    INPUT    ***********************************/
     /***********************************************************/
@@ -1401,6 +1655,24 @@ static int Set_value_at_indices (Bmi *self, const char *name, int * inds, int le
     if (status == BMI_FAILURE)
         return BMI_FAILURE;
     memcpy(ptr, src, var_item_size * len);
+    /*
+    * If we want to modify the number of nash cascades, we must also side effect other
+    * variables.  This "should" work, based on current program structure
+    */
+    /*
+    if (strcmp (name, "number_nash_reservoirs") ) {
+    
+            //Note that this only allows adjustment to the number of cascades,
+            //and each one will have initial storage value of 0.0
+            //Reallocate nash_storage
+            if( model->nash_storage != NULL ) free(model->nash_storage);
+            model->nash_storage = malloc(sizeof(double) * model->num_lateral_flow_nash_reservoirs);
+            if( model->nash_storage == NULL ) return BMI_FAILURE;
+            for (j = 0; j < model->num_lateral_flow_nash_reservoirs; j++)
+                model->nash_storage[j] = 0.0;
+        
+    }
+    */
     return BMI_SUCCESS;
 }
 
@@ -2343,8 +2615,10 @@ extern void run_cfe(cfe_state_struct* cfe_ptr){
 }
 
 // Functions for setting up CFE data, i.e., initializing...
-extern void init_soil_reservoir(cfe_state_struct* cfe_ptr, double alpha_fc, double max_storage, double storage,
+/*extern void init_soil_reservoir(cfe_state_struct* cfe_ptr, double alpha_fc, double max_storage, double storage,
                                 int is_storage_ratios)
+{*/
+extern void init_soil_reservoir(cfe_state_struct* cfe_ptr, double alpha_fc, double storage)
 {
     // calculate the activation storage for the secondary lateral flow outlet in the soil nonlinear reservoir.
     // following the method in the NWM/t-shirt parameter equivalence document, assuming field capacity soil
@@ -2375,7 +2649,7 @@ extern void init_soil_reservoir(cfe_state_struct* cfe_ptr, double alpha_fc, doub
     // Units of primary coefficient are m per time step
     cfe_ptr->soil_reservoir.coeff_primary = cfe_ptr->NWM_soil_params.satdk * cfe_ptr->NWM_soil_params.slop * cfe_ptr->time_step_size;
     // 1.0=linear
-    cfe_ptr->soil_reservoir.exponent_primary = 1.0;
+    //cfe_ptr->soil_reservoir.exponent_primary = 1.0;
     // i.e., field_capacity_storage_threshold_m
     cfe_ptr->soil_reservoir.storage_threshold_primary_m =
             cfe_ptr->NWM_soil_params.smcmax * pow(1.0 / cfe_ptr->NWM_soil_params.satpsi, (-1.0 / cfe_ptr->NWM_soil_params.bb)) *
@@ -2385,13 +2659,18 @@ extern void init_soil_reservoir(cfe_state_struct* cfe_ptr, double alpha_fc, doub
     // TODO: look at whether K_lf needs to be a derived (i.e., via get_K_lf_for_time_step()) or explicit parameter
     cfe_ptr->soil_reservoir.coeff_secondary = cfe_ptr->K_lf;
     // 1.0=linear
-    cfe_ptr->soil_reservoir.exponent_secondary = 1.0;
+    //cfe_ptr->soil_reservoir.exponent_secondary = 1.0;
     // making them the same, but they don't have 2B
     cfe_ptr->soil_reservoir.storage_threshold_secondary_m = cfe_ptr->soil_reservoir.storage_threshold_primary_m;
-    cfe_ptr->soil_reservoir.storage_m = init_reservoir_storage(is_storage_ratios, storage, max_storage);
+
+    // Negative amounts are always ignored and just considered emtpy
+    if (storage < 0.0) storage = 0.0;
+    cfe_ptr->soil_reservoir.storage_m = storage;
+
+    //cfe_ptr->soil_reservoir.storage_m = init_reservoir_storage(is_storage_ratios, storage, max_storage);
 }
 
-extern double init_reservoir_storage(int is_ratio, double amount, double max_amount) {
+/*extern double init_reservoir_storage(int is_ratio, double amount, double max_amount) {
     // Negative amounts are always ignored and just considered emtpy
     if (amount < 0.0) {
         return 0.0;
@@ -2409,7 +2688,7 @@ extern double init_reservoir_storage(int is_ratio, double amount, double max_amo
     else {
         return amount;
     }
-}
+}*/
 
 extern void initialize_volume_trackers(cfe_state_struct* cfe_ptr){
     cfe_ptr->vol_struct.volin = 0;
@@ -2428,6 +2707,9 @@ extern void initialize_volume_trackers(cfe_state_struct* cfe_ptr){
     cfe_ptr->vol_struct.vol_in_gw_start = cfe_ptr->gw_reservoir.storage_m;  
     cfe_ptr->vol_struct.volstart          += cfe_ptr->soil_reservoir.storage_m;    // initial mass balance checks in soil reservoir
     cfe_ptr->vol_struct.vol_soil_start     = cfe_ptr->soil_reservoir.storage_m;
+    cfe_ptr->vol_struct.vol_et_from_soil = 0;
+    cfe_ptr->vol_struct.vol_et_from_rain = 0;
+    cfe_ptr->vol_struct.vol_et_to_atm = 0;
 }
 
 /**************************************************************************/
@@ -2507,10 +2789,11 @@ extern void mass_balance_check(cfe_state_struct* cfe_ptr){
     printf("schaake residual: %6.4e m\n",schaake_residual);  // should equal 0.0
     if(!is_fabs_less_than_epsilon(schaake_residual,1.0e-12))
                   printf("WARNING: SCHAAKE PARTITIONING MASS BALANCE CHECK FAILED\n");*/
-    direct_residual = cfe_ptr->vol_struct.volin - cfe_ptr->vol_struct.vol_runoff - cfe_ptr->vol_struct.vol_infilt;
+    direct_residual = cfe_ptr->vol_struct.volin - cfe_ptr->vol_struct.vol_runoff - cfe_ptr->vol_struct.vol_infilt-cfe_ptr->vol_struct.vol_et_from_rain;
     printf(" DIRECT RUNOFF MASS BALANCE\n");
     printf("  surface runoff: %8.4lf m\n",cfe_ptr->vol_struct.vol_runoff);
     printf("    infiltration: %8.4lf m\n",cfe_ptr->vol_struct.vol_infilt);
+    printf("    vol_et_from_rain: %8.4lf m\n",cfe_ptr->vol_struct.vol_et_from_rain);
     printf("direct residual: %6.4e m\n",direct_residual);  // should equal 0.0
     if(!is_fabs_less_than_epsilon(direct_residual,1.0e-12))
                   printf("WARNING: DIRECT RUNOFF PARTITIONING MASS BALANCE CHECK FAILED\n");
@@ -2532,7 +2815,7 @@ extern void mass_balance_check(cfe_state_struct* cfe_ptr){
     /* xinanjiang_dev 
     soil_residual=cfe_ptr->vol_struct.vol_soil_start + cfe_ptr->vol_struct.vol_sch_infilt -      */
     soil_residual=cfe_ptr->vol_struct.vol_soil_start + cfe_ptr->vol_struct.vol_infilt -
-                  cfe_ptr->vol_struct.vol_soil_to_lat_flow - vol_soil_end - cfe_ptr->vol_struct.vol_to_gw;
+                  cfe_ptr->vol_struct.vol_soil_to_lat_flow - vol_soil_end - cfe_ptr->vol_struct.vol_to_gw - cfe_ptr->vol_struct.vol_et_from_soil;
                   
     printf(" SOIL WATER CONCEPTUAL RESERVOIR MASS BALANCE\n");
     printf("   init soil vol: %8.4lf m\n",cfe_ptr->vol_struct.vol_soil_start);     
@@ -2542,7 +2825,8 @@ extern void mass_balance_check(cfe_state_struct* cfe_ptr){
     printf("  vol. into soil: %8.4lf m\n",cfe_ptr->vol_struct.vol_infilt);
     printf("vol.soil2latflow: %8.4lf m\n",cfe_ptr->vol_struct.vol_soil_to_lat_flow);
     printf(" vol. soil to gw: %8.4lf m\n",cfe_ptr->vol_struct.vol_soil_to_gw);
-    printf(" final vol. soil: %8.4lf m\n",vol_soil_end);   
+    printf(" final vol. soil: %8.4lf m\n",vol_soil_end);  
+    printf(" vol. et from soil: %8.4lf m\n",cfe_ptr->vol_struct.vol_et_from_soil);  
     printf("vol. soil resid.: %6.4e m\n",soil_residual);
     if(!is_fabs_less_than_epsilon(soil_residual,1.0e-12))
                    printf("WARNING: SOIL CONCEPTUAL RESERVOIR MASS BALANCE CHECK FAILED\n");
